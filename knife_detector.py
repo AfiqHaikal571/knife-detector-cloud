@@ -10,8 +10,7 @@ def load_model():
     return YOLO("best.pt")
 
 model = load_model()
-
-st.title("🔪 Knife Detection (Upload Media)")
+st.title("🔪 Knife Detector (Upload)")
 
 media_type = st.radio("Pilih jenis media:", ["Gambar", "Video"])
 
@@ -27,7 +26,7 @@ if media_type == "Gambar":
         st.image(annotated, caption="Hasil Pengesanan", use_column_width=True)
 
 else:
-    uploaded_video = st.file_uploader("Upload video", type=["mp4", "mov", "avi"])
+    uploaded_video = st.file_uploader("Upload video", type=["mp4", "avi", "mov"])
     if uploaded_video:
         tfile = tempfile.NamedTemporaryFile(delete=False)
         tfile.write(uploaded_video.read())
@@ -39,11 +38,8 @@ else:
             ret, frame = cap.read()
             if not ret:
                 break
-
             results = model.predict(frame, conf=0.25)
-            annotated_frame = results[0].plot()
-            annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-
-            stframe.image(annotated_frame)
-
+            annotated = results[0].plot()
+            annotated = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
+            stframe.image(annotated)
         cap.release()
