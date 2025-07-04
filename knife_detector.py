@@ -1,21 +1,27 @@
 import streamlit as st
+import torch
+import ultralytics.nn.tasks as tasks
+from ultralytics import YOLO
 from PIL import Image
 import numpy as np
-from ultralytics import YOLO
-import cv2
 import tempfile
+import cv2
+
+# Fix PyTorch safe unpickling error (trusting DetectionModel)
+torch.serialization._legacy.load._internal_safe_globals["ultralytics.nn.tasks.DetectionModel"] = tasks.DetectionModel
 
 @st.cache_resource
 def load_model():
     return YOLO("best.pt")
 
 model = load_model()
-st.title("🔪 Knife Detector (Upload)")
+
+st.title("🔪 Knife Detector (Upload Image or Video)")
 
 media_type = st.radio("Pilih jenis media:", ["Gambar", "Video"])
 
 if media_type == "Gambar":
-    uploaded_image = st.file_uploader("Upload gambar", type=["jpg", "png", "jpeg"])
+    uploaded_image = st.file_uploader("Upload gambar", type=["jpg", "jpeg", "png"])
     if uploaded_image:
         image = Image.open(uploaded_image).convert("RGB")
         image_np = np.array(image)
@@ -25,8 +31,8 @@ if media_type == "Gambar":
         annotated = results[0].plot()
         st.image(annotated, caption="Hasil Pengesanan", use_column_width=True)
 
-else:
-    uploaded_video = st.file_uploader("Upload video", type=["mp4", "avi", "mov"])
+elif media_type == "Video":
+    uploaded_video = st.file_uploader("Upload video", type=["mp4", "mov", "avi"])
     if uploaded_video:
         tfile = tempfile.NamedTemporaryFile(delete=False)
         tfile.write(uploaded_video.read())
@@ -38,8 +44,11 @@ else:
             ret, frame = cap.read()
             if not ret:
                 break
+
             results = model.predict(frame, conf=0.25)
-            annotated = results[0].plot()
-            annotated = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
-            stframe.image(annotated)
+            annotated_frame = results[0].plot()
+            annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+
+            stframe.image(annotated_frame)
+
         cap.release()
