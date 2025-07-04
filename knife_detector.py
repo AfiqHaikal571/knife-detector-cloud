@@ -1,14 +1,13 @@
 import streamlit as st
 import torch
-import ultralytics.nn.tasks as tasks
 from ultralytics import YOLO
 from PIL import Image
 import numpy as np
 import tempfile
 import cv2
 
-# Fix PyTorch 2.6+ unpickling error
-torch.serialization.add_safe_class(tasks.DetectionModel)
+# BYPASS PyTorch weight-only loading error (for older PyTorch versions on Streamlit Cloud)
+torch._storage_dtypes = {}
 
 @st.cache_resource
 def load_model():
