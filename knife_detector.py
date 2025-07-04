@@ -7,8 +7,8 @@ import numpy as np
 import tempfile
 import cv2
 
-# Fix PyTorch safe unpickling error (trusting DetectionModel)
-torch.serialization._legacy.load._internal_safe_globals["ultralytics.nn.tasks.DetectionModel"] = tasks.DetectionModel
+# Fix PyTorch 2.6+ unpickling error
+torch.serialization.add_safe_class(tasks.DetectionModel)
 
 @st.cache_resource
 def load_model():
@@ -48,7 +48,6 @@ elif media_type == "Video":
             results = model.predict(frame, conf=0.25)
             annotated_frame = results[0].plot()
             annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-
             stframe.image(annotated_frame)
 
         cap.release()
