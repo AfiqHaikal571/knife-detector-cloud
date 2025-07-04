@@ -5,9 +5,10 @@ from PIL import Image
 import numpy as np
 import tempfile
 import cv2
+import os
 
-# BYPASS PyTorch weight-only loading error (for older PyTorch versions on Streamlit Cloud)
-torch._storage_dtypes = {}
+# Fix for Streamlit Cloud compatibility
+torch.set_num_threads(1)
 
 @st.cache_resource
 def load_model():
@@ -33,20 +34,24 @@ if media_type == "Gambar":
 elif media_type == "Video":
     uploaded_video = st.file_uploader("Upload video", type=["mp4", "mov", "avi"])
     if uploaded_video:
-        tfile = tempfile.NamedTemporaryFile(delete=False)
-        tfile.write(uploaded_video.read())
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tfile:
+            tfile.write(uploaded_video.read())
+            video_path = tfile.name
 
-        cap = cv2.VideoCapture(tfile.name)
-        stframe = st.empty()
+        try:
+            cap = cv2.VideoCapture(video_path)
+            stframe = st.empty()
+            
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+                results = model.predict(frame, conf=0.25)
+                annotated_frame = results[0].plot()
+                annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+                stframe.image(annotated_frame)
 
-            results = model.predict(frame, conf=0.25)
-            annotated_frame = results[0].plot()
-            annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-            stframe.image(annotated_frame)
-
-        cap.release()
+        finally:
+            cap.release()
+            os.unlink(video_path)
